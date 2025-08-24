@@ -11,6 +11,36 @@ afterEach(() => {
   vi.resetAllMocks()
 })
 
+
+test('adds a task and updates summary', async () => {
+  fetch
+    .mockResolvedValueOnce({ json: async () => [] }) // initial load
+    .mockResolvedValueOnce({
+      json: async () => ({
+        id: 1,
+        title: 'Test',
+        description: '',
+        due_date: null,
+        priority: 'normal',
+        done: false,
+      }),
+    })
+
+  render(<App />)
+
+  const titleInput = screen.getByPlaceholderText('Title')
+  fireEvent.change(titleInput, { target: { value: 'Test' } })
+  fireEvent.click(screen.getByText('Add'))
+
+  await waitFor(() => screen.getByDisplayValue('Test'))
+  expect(fetch).toHaveBeenCalledWith('http://localhost:8000/tasks', expect.objectContaining({ method: 'POST' }))
+  expect(screen.getByDisplayValue('Test')).toBeInTheDocument()
+  const summary = screen.getByText('Total:', { selector: 'strong' }).parentElement
+  expect(summary).toHaveTextContent('Total:')
+  expect(summary).toHaveTextContent('Completed:')
+  expect(summary).toHaveTextContent('Pending:')
+  expect(summary).toHaveTextContent('1')
+
 test('adds a task', async () => {
   fetch
     .mockResolvedValueOnce({ json: async () => [] }) // initial load
@@ -25,4 +55,5 @@ test('adds a task', async () => {
   await waitFor(() => screen.getByDisplayValue('Test'))
   expect(fetch).toHaveBeenCalledWith('http://localhost:8000/tasks', expect.anything())
   expect(screen.getByDisplayValue('Test')).toBeInTheDocument()
+
 })
