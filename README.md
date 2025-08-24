@@ -21,3 +21,30 @@ Goals
 You may refactor structure, add files, and improve the UX. Keep it simple, readable, and well-tested.
 
 Task Manager Lite (FastAPI + React)
+
+
+
+Getting Started
+
+Prereqs
+- Node 18+ and npm
+- Python 3.10+
+
+Backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port
+
+# Run tests
+cd backend
+pytest -q
+
+Frontend
+cd frontend
+npm install
+npm run dev  # Vite dev server
+
+# Run tests
+cd frontend
+npm test
