@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
@@ -40,6 +40,20 @@ class TaskUpdate(BaseModel):
 
 _tasks: List[Task] = []
 _next_id = 1
+
+
+@app.options("/tasks")
+@app.options("/tasks/{task_id}")
+def _cors_preflight_handler(task_id: int | None = None) -> Response:  # pragma: no cover - behaviour tested separately
+    """Explicitly handle CORS preflight requests.
+
+    While :class:`CORSMiddleware` normally takes care of this, some
+    environments issue ``OPTIONS`` requests without the expected
+    ``Origin`` header which causes Starlette to return ``405``.  By
+    registering an ``OPTIONS`` route we guarantee a ``200`` response,
+    allowing browsers to complete their preflight handshake reliably.
+    """
+    return Response(status_code=200)
 
 @app.get("/tasks", response_model=List[Task])
 def list_tasks():

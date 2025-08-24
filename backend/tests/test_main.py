@@ -52,3 +52,14 @@ def test_delete_task():
     assert resp.status_code == 204
     resp = client.get("/tasks")
     assert len(resp.json()) == 2  # from previous tests
+
+
+def test_cors_preflight():
+    resp = client.options(
+        "/tasks",
+        headers={
+            "Origin": "http://test",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert resp.status_code == 200
