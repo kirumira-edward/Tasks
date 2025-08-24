@@ -1,36 +1,29 @@
 import React, { useEffect, useState } from 'react'
+import './App.css'
 
 const API = 'http://localhost:8000/tasks'
 
 export default function App() {
   const [tasks, setTasks] = useState([])
   const [newTitle, setNewTitle] = useState('')
-
   const [newDesc, setNewDesc] = useState('')
   const [newDue, setNewDue] = useState('')
   const [newPriority, setNewPriority] = useState('normal')
-
-  const total = tasks.length
-  const completed = tasks.filter(t => t.done).length
-  const pending = total - completed
-  const completion = total ? Math.round((completed / total) * 100) : 0
-
+  const today = new Date().toISOString().split('T')[0]
 
   const load = async () => {
     const res = await fetch(API)
     setTasks(await res.json())
   }
+  useEffect(() => { load() }, [])
 
-  useEffect(() => {
-    load()
-  }, [])
+  const notify = msg => alert(msg)
 
   const addTask = async () => {
     if (!newTitle.trim()) return
     const res = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-
       body: JSON.stringify({
         title: newTitle,
         description: newDesc,
@@ -38,39 +31,51 @@ export default function App() {
         priority: newPriority,
         done: false,
       }),
-
-      body: JSON.stringify({ title: newTitle, done: false })
-
     })
+    if (!res.ok) return
     const task = await res.json()
-    setTasks([...tasks, task])
+    setTasks(prev => [...prev, task])
+    notify(`Task added: ${task.title}`)
     setNewTitle('')
-
     setNewDesc('')
     setNewDue('')
     setNewPriority('normal')
-
   }
 
-  const updateTask = async (id, data) => {
-    const res = await fetch(`${API}/${id}`, {
+  const handleFieldChange = (id, field, value) => {
+    setTasks(prev =>
+      prev.map(t => (t.id === id ? { ...t, [field]: value } : t))
+    )
+  }
+
+  const updateTask = async task => {
+    const res = await fetch(`${API}/${task.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(task),
     })
+    if (!res.ok) return
     const updated = await res.json()
-    setTasks(tasks.map(t => (t.id === id ? updated : t)))
+    setTasks(prev => prev.map(t => (t.id === task.id ? updated : t)))
+    notify(`Task updated: ${updated.title}`)
   }
 
-  const deleteTask = async (id) => {
-    await fetch(`${API}/${id}`, { method: 'DELETE' })
-    setTasks(tasks.filter(t => t.id !== id))
+  const deleteTask = async id => {
+    const task = tasks.find(t => t.id === id)
+    const res = await fetch(`${API}/${id}`, { method: 'DELETE' })
+    if (!res.ok) return
+    setTasks(prev => prev.filter(t => t.id !== id))
+    if (task) notify(`Task deleted: ${task.title}`)
   }
-
 
   const exportCSV = () => {
     const header = 'id,title,description,due_date,priority,done\n'
-    const rows = tasks.map(t => `${t.id},${t.title},${t.description || ''},${t.due_date || ''},${t.priority},${t.done}`)
+    const rows = tasks.map(
+      t =>
+        `${t.id},${t.title},${t.description ?? ''},${t.due_date ?? ''},${
+          t.priority ?? ''
+        },${t.done}`,
+    )
     const blob = new Blob([header + rows.join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -80,17 +85,90 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
+  const completedTasks = tasks.filter(t => t.done)
+  const pendingTasks = tasks.filter(t => !t.done)
+  const total = tasks.length
+  const completed = completedTasks.length
+  const pending = pendingTasks.length
+  const completion = total ? Math.round((completed / total) * 100) : 0
+
+  const renderRows = list =>
+    list.map(task => (
+      <tr key={task.id} className={`priority-${task.priority}`}>
+        <td style={{ textAlign: 'center' }}>
+          <input
+            type="checkbox"
+            checked={task.done}
+            onChange={e =>
+              handleFieldChange(task.id, 'done', e.target.checked)
+            }
+          />
+        </td>
+        <td>
+          <input
+            value={task.title}
+            onChange={e => handleFieldChange(task.id, 'title', e.target.value)}
+          />
+        </td>
+        <td>
+          <input
+            value={task.description || ''}
+            onChange={e =>
+              handleFieldChange(task.id, 'description', e.target.value)
+            }
+          />
+        </td>
+        <td>
+          <input
+            type="date"
+            min={today}
+            value={task.due_date || ''}
+            onChange={e =>
+              handleFieldChange(task.id, 'due_date', e.target.value || null)
+            }
+          />
+        </td>
+        <td>
+          <select
+            value={task.priority}
+            onChange={e =>
+              handleFieldChange(task.id, 'priority', e.target.value)
+            }
+          >
+            <option value="low">Low</option>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+          </select>
+        </td>
+        <td>
+          <button onClick={() => updateTask(task)}>Update</button>
+        </td>
+        <td>
+          <button className="delete-btn" onClick={() => deleteTask(task.id)}>
+            Delete
+          </button>
+        </td>
+      </tr>
+    ))
+
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: 20 }}>
+    <div className="app">
       <h1>Task Manager Lite</h1>
-      <div style={{ marginBottom: 16 }}>
-        <strong>Total:</strong> {total} | <strong>Completed:</strong> {completed} | <strong>Pending:</strong> {pending}
-        <div style={{ background: '#eee', height: 8, marginTop: 4 }}>
-          <div style={{ width: `${completion}%`, background: 'green', height: '100%' }}></div>
+      <div className="summary">
+        <div>
+          <strong>Total:</strong> {total} | <strong>Completed:</strong>{' '}
+          {completed} | <strong>Pending:</strong> {pending}
+          <div className="progress">
+            <div
+              className="progress-bar"
+              style={{ width: `${completion}%` }}
+            />
+          </div>
         </div>
-        <button onClick={exportCSV} style={{ marginTop: 8 }}>Export CSV</button>
+        <button onClick={exportCSV}>Export CSV</button>
       </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+
+      <div className="form">
         <input
           placeholder="Title"
           value={newTitle}
@@ -103,10 +181,14 @@ export default function App() {
         />
         <input
           type="date"
+          min={today}
           value={newDue}
           onChange={e => setNewDue(e.target.value)}
         />
-        <select value={newPriority} onChange={e => setNewPriority(e.target.value)}>
+        <select
+          value={newPriority}
+          onChange={e => setNewPriority(e.target.value)}
+        >
           <option value="low">Low</option>
           <option value="normal">Normal</option>
           <option value="high">High</option>
@@ -114,7 +196,8 @@ export default function App() {
         <button onClick={addTask}>Add</button>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <h2>Pending Tasks</h2>
+      <table className="table">
         <thead>
           <tr>
             <th>Done</th>
@@ -122,82 +205,28 @@ export default function App() {
             <th>Description</th>
             <th>Due</th>
             <th>Priority</th>
-            <th></th>
+            <th>Update</th>
+            <th />
           </tr>
         </thead>
-        <tbody>
-          {tasks.map(task => (
-            <tr key={task.id}>
-              <td style={{ textAlign: 'center' }}>
-                <input
-                  type="checkbox"
-                  checked={task.done}
-                  onChange={e => updateTask(task.id, { done: e.target.checked })}
-                />
-              </td>
-              <td>
-                <input
-                  value={task.title}
-                  onChange={e => updateTask(task.id, { title: e.target.value })}
-                />
-              </td>
-              <td>
-                <input
-                  value={task.description || ''}
-                  onChange={e => updateTask(task.id, { description: e.target.value })}
-                />
-              </td>
-              <td>
-                <input
-                  type="date"
-                  value={task.due_date || ''}
-                  onChange={e => updateTask(task.id, { due_date: e.target.value || null })}
-                />
-              </td>
-              <td>
-                <select
-                  value={task.priority}
-                  onChange={e => updateTask(task.id, { priority: e.target.value })}
-                >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                </select>
-              </td>
-              <td>
-                <button onClick={() => deleteTask(task.id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+        <tbody>{renderRows(pendingTasks)}</tbody>
       </table>
 
-  return (
-    <div>
-      <h1>Task Manager Lite</h1>
-      <input
-        placeholder="New task"
-        value={newTitle}
-        onChange={e => setNewTitle(e.target.value)}
-      />
-      <button onClick={addTask}>Add</button>
-      <ul>
-        {tasks.map(task => (
-          <li key={task.id}>
-            <input
-              type="checkbox"
-              checked={task.done}
-              onChange={e => updateTask(task.id, { done: e.target.checked })}
-            />
-            <input
-              value={task.title}
-              onChange={e => updateTask(task.id, { title: e.target.value })}
-            />
-            <button onClick={() => deleteTask(task.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-
+      <h2>Completed Tasks</h2>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Done</th>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Due</th>
+            <th>Priority</th>
+            <th>Update</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>{renderRows(completedTasks)}</tbody>
+      </table>
     </div>
   )
 }
