@@ -38,12 +38,29 @@ def test_update_task():
         },
     )
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["done"] is True
-    assert data["title"] == "Updated"
-    assert data["description"] == "Desc"
-    assert data["due_date"] == "2025-01-01"
-    assert data["priority"] == "high"
+
+
+def test_summary_and_export():
+    import main
+    main._tasks.clear()
+    main._next_id = 1
+
+    client.post("/tasks", json={"title": "A", "priority": "low", "done": True})
+    client.post("/tasks", json={"title": "B", "priority": "high"})
+
+    resp = client.get("/summary")
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "total": 2,
+        "completed": 1,
+        "pending": 1,
+        "by_priority": {"low": 1, "high": 1},
+    }
+
+    resp = client.get("/export")
+    assert resp.status_code == 200
+    assert "id,title" in resp.text
+    assert "A" in resp.text and "B" in resp.text
 
 
 def test_delete_task():

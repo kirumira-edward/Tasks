@@ -1,3 +1,4 @@
+from collections import Counter
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -84,3 +85,27 @@ def delete_task(task_id: int):
             _tasks.pop(i)
             return
     raise HTTPException(status_code=404, detail="Task not found")
+
+
+@app.get("/summary")
+def task_summary():
+    total = len(_tasks)
+    completed = sum(1 for t in _tasks if t.done)
+    pending = total - completed
+    priorities = Counter(t.priority for t in _tasks)
+    return {
+        "total": total,
+        "completed": completed,
+        "pending": pending,
+        "by_priority": dict(priorities),
+    }
+
+
+@app.get("/export", response_class=Response)
+def export_tasks():
+    header = "id,title,description,due_date,priority,done\n"
+    rows = [
+        f"{t.id},{t.title},{t.description or ''},{t.due_date or ''},{t.priority},{t.done}" for t in _tasks
+    ]
+    csv = header + "\n".join(rows)
+    return Response(content=csv, media_type="text/csv")

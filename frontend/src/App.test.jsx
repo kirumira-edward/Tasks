@@ -11,7 +11,7 @@ afterEach(() => {
   vi.resetAllMocks()
 })
 
-test('adds a task', async () => {
+test('adds a task and updates summary', async () => {
   fetch
     .mockResolvedValueOnce({ json: async () => [] }) // initial load
     .mockResolvedValueOnce({
@@ -34,4 +34,9 @@ test('adds a task', async () => {
   await waitFor(() => screen.getByDisplayValue('Test'))
   expect(fetch).toHaveBeenCalledWith('http://localhost:8000/tasks', expect.objectContaining({ method: 'POST' }))
   expect(screen.getByDisplayValue('Test')).toBeInTheDocument()
+  const summary = screen.getByText('Total:', { selector: 'strong' }).parentElement
+  expect(summary).toHaveTextContent('Total:')
+  expect(summary).toHaveTextContent('Completed:')
+  expect(summary).toHaveTextContent('Pending:')
+  expect(summary).toHaveTextContent('1')
 })

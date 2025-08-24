@@ -9,6 +9,11 @@ export default function App() {
   const [newDue, setNewDue] = useState('')
   const [newPriority, setNewPriority] = useState('normal')
 
+  const total = tasks.length
+  const completed = tasks.filter(t => t.done).length
+  const pending = total - completed
+  const completion = total ? Math.round((completed / total) * 100) : 0
+
   const load = async () => {
     const res = await fetch(API)
     setTasks(await res.json())
@@ -54,9 +59,28 @@ export default function App() {
     setTasks(tasks.filter(t => t.id !== id))
   }
 
+  const exportCSV = () => {
+    const header = 'id,title,description,due_date,priority,done\n'
+    const rows = tasks.map(t => `${t.id},${t.title},${t.description || ''},${t.due_date || ''},${t.priority},${t.done}`)
+    const blob = new Blob([header + rows.join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'tasks.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: 20 }}>
       <h1>Task Manager Lite</h1>
+      <div style={{ marginBottom: 16 }}>
+        <strong>Total:</strong> {total} | <strong>Completed:</strong> {completed} | <strong>Pending:</strong> {pending}
+        <div style={{ background: '#eee', height: 8, marginTop: 4 }}>
+          <div style={{ width: `${completion}%`, background: 'green', height: '100%' }}></div>
+        </div>
+        <button onClick={exportCSV} style={{ marginTop: 8 }}>Export CSV</button>
+      </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <input
           placeholder="Title"
