@@ -13,20 +13,25 @@ def test_create_and_list_tasks():
     assert task["id"] == 1
     assert task["title"] == "Test Task"
     assert task["done"] is False
+
     assert task["description"] == ""
     assert task["due_date"] is None
     assert task["priority"] == "normal"
+
 
     resp = client.get("/tasks")
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 1
     assert data[0]["title"] == "Test Task"
+
     assert data[0]["priority"] == "normal"
+
 
 
 def test_update_task():
     client.post("/tasks", json={"title": "Another"})
+
     resp = client.put(
         "/tasks/2",
         json={
@@ -62,6 +67,13 @@ def test_summary_and_export():
     assert "id,title" in resp.text
     assert "A" in resp.text and "B" in resp.text
 
+    resp = client.put("/tasks/2", json={"done": True, "title": "Updated"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["done"] is True
+    assert data["title"] == "Updated"
+
+
 
 def test_delete_task():
     client.post("/tasks", json={"title": "Delete me"})
@@ -69,6 +81,7 @@ def test_delete_task():
     assert resp.status_code == 204
     resp = client.get("/tasks")
     assert len(resp.json()) == 2  # from previous tests
+
 
 
 def test_cors_preflight():

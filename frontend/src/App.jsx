@@ -5,6 +5,7 @@ const API = 'http://localhost:8000/tasks'
 export default function App() {
   const [tasks, setTasks] = useState([])
   const [newTitle, setNewTitle] = useState('')
+
   const [newDesc, setNewDesc] = useState('')
   const [newDue, setNewDue] = useState('')
   const [newPriority, setNewPriority] = useState('normal')
@@ -13,6 +14,7 @@ export default function App() {
   const completed = tasks.filter(t => t.done).length
   const pending = total - completed
   const completion = total ? Math.round((completed / total) * 100) : 0
+
 
   const load = async () => {
     const res = await fetch(API)
@@ -28,6 +30,7 @@ export default function App() {
     const res = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+
       body: JSON.stringify({
         title: newTitle,
         description: newDesc,
@@ -35,13 +38,18 @@ export default function App() {
         priority: newPriority,
         done: false,
       }),
+
+      body: JSON.stringify({ title: newTitle, done: false })
+
     })
     const task = await res.json()
     setTasks([...tasks, task])
     setNewTitle('')
+
     setNewDesc('')
     setNewDue('')
     setNewPriority('normal')
+
   }
 
   const updateTask = async (id, data) => {
@@ -58,6 +66,7 @@ export default function App() {
     await fetch(`${API}/${id}`, { method: 'DELETE' })
     setTasks(tasks.filter(t => t.id !== id))
   }
+
 
   const exportCSV = () => {
     const header = 'id,title,description,due_date,priority,done\n'
@@ -162,6 +171,33 @@ export default function App() {
           ))}
         </tbody>
       </table>
+
+  return (
+    <div>
+      <h1>Task Manager Lite</h1>
+      <input
+        placeholder="New task"
+        value={newTitle}
+        onChange={e => setNewTitle(e.target.value)}
+      />
+      <button onClick={addTask}>Add</button>
+      <ul>
+        {tasks.map(task => (
+          <li key={task.id}>
+            <input
+              type="checkbox"
+              checked={task.done}
+              onChange={e => updateTask(task.id, { done: e.target.checked })}
+            />
+            <input
+              value={task.title}
+              onChange={e => updateTask(task.id, { title: e.target.value })}
+            />
+            <button onClick={() => deleteTask(task.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+
     </div>
   )
 }

@@ -1,10 +1,14 @@
+
 from collections import Counter
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
+
 from pydantic import BaseModel
 from typing import List
 
 app = FastAPI()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,10 +41,24 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     due_date: str | None = None
     priority: str | None = None
+
+class Task(BaseModel):
+    id: int
+    title: str
+    done: bool = False
+
+class TaskCreate(BaseModel):
+    title: str
+    done: bool = False
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+
     done: bool | None = None
 
 _tasks: List[Task] = []
 _next_id = 1
+
 
 
 @app.options("/tasks")
@@ -55,6 +73,7 @@ def _cors_preflight_handler(task_id: int | None = None) -> Response:  # pragma: 
     allowing browsers to complete their preflight handshake reliably.
     """
     return Response(status_code=200)
+
 
 @app.get("/tasks", response_model=List[Task])
 def list_tasks():
@@ -87,6 +106,7 @@ def delete_task(task_id: int):
     raise HTTPException(status_code=404, detail="Task not found")
 
 
+
 @app.get("/summary")
 def task_summary():
     total = len(_tasks)
@@ -109,3 +129,4 @@ def export_tasks():
     ]
     csv = header + "\n".join(rows)
     return Response(content=csv, media_type="text/csv")
+
