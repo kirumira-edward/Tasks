@@ -11,6 +11,8 @@ Goals
       {title: str, done: bool}
     - PUT /tasks/{id} → update title/done
     - DELETE /tasks/{id} → delete task
+    - POST /signup → create user account
+    - POST /login → authenticate user
   - Frontend features:
     - Add new tasks
     - List tasks from backend

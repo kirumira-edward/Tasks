@@ -3,11 +3,12 @@ from datetime import date
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
-from typing import List
+from typing import Dict, List
 from fastapi.staticfiles import StaticFiles
-app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+from pathlib import Path
 
 app = FastAPI()
+dist_dir = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,8 +54,26 @@ class TaskUpdate(BaseModel):
             raise ValueError("due_date cannot be in the past")
         return v
 
+class User(BaseModel):
+    id: int
+    username: str
+    password: str
+
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 _tasks: List[Task] = []
 _next_id = 1
+_users: Dict[str, User] = {}
+_next_user_id = 1
 
 @app.options("/tasks")
 @app.options("/tasks/{task_id}")
@@ -116,3 +135,26 @@ def export_tasks():
     ]
     csv = header + "\n".join(rows)
     return Response(content=csv, media_type="text/csv")
+
+
+@app.post("/signup", response_model=User, status_code=201)
+def signup(user: UserCreate):
+    global _next_user_id
+    if user.username in _users:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    new_user = User(id=_next_user_id, **user.model_dump())
+    _users[user.username] = new_user
+    _next_user_id += 1
+    return new_user
+
+
+@app.post("/login", response_model=User)
+def login(credentials: LoginRequest):
+    user = _users.get(credentials.username)
+    if not user or user.password != credentials.password:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return user
+
+
+if dist_dir.exists():  # pragma: no cover - only used in production with built frontend
+    app.mount("/", StaticFiles(directory=dist_dir, html=True), name="static")
